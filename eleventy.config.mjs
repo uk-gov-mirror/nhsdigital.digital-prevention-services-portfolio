@@ -3,6 +3,31 @@ import yaml from 'js-yaml'
 
 const serviceName = 'Digital prevention services (DPSP)'
 
+// The CloudFront origin hosting the Umami script and receiving analytics events.
+const analyticsHost = 'https://d11vb7m97xecvc.cloudfront.net'
+
+// Hash of the Umami script.js file hosted at analyticsHost, used by
+// Subresource Integrity (SRI) to check it has not changed unexpectedly.
+// If that script changes, download it and run:
+// openssl dgst -sha384 -binary script.js | openssl base64 -A
+// Prefix the result with 'sha384-' and update this value.
+const analyticsScriptSriHash =
+  'sha384-FeSgFWhRpNmUWqmtRLZpDSRTuxgovbVqlyM0OaJpq2IanhF2u3xjYziXsyXR9Kg/'
+
+// The Umami website ID, available in the website's Umami settings.
+const analyticsWebsiteId = '046780c9-3684-4ded-a9d2-bdf361faf561'
+
+// Hash of the exact inline script emitted by the NHS plugin, used by the CSP.
+// If that script changes, hash its contents with the command below,
+// replacing '<script contents>' with the JavaScript between the <script> tags
+// in the generated HTML body (currently: document.body.className += ' js-enabled' + ('noModule' in HTMLScriptElement.prototype ? ' nhsuk-frontend-supported' : '');).
+// Do not use the external Umami <script defer src="..."> tag for this hash.
+// That external script is allowed by the CSP separately by script-src via analyticsHost.
+// printf '%s' "<script contents>" | openssl dgst -sha256 -binary | openssl base64 -A
+// Prefix the result with 'sha256-' and update this value.
+const cspInlineScriptHash =
+  'sha256-tDOvXJi1PXbg0CWjLCCYSNHRXtps26K4JXkE3M6u/c0='
+
 export default function (eleventyConfig) {
   eleventyConfig.addPlugin(nhsukEleventyPlugin, {
     titleSuffix: `NHS ${serviceName}`,
@@ -70,10 +95,28 @@ export default function (eleventyConfig) {
 
     return content.replace(
       '<head>',
-      // Loaded with a Subresource Integrity check, so the browser refuses to run it if the NHSE-hosted CloudFront ever serves different contents.
-      // If this URL ever changes to a version of Umami that makes a breaking change to the snippet, tracking will stop working until this hash is regenerated with:
-      // openssl dgst -sha384 -binary script.js | openssl base64 -A
-      '<head>\n<script defer src="https://d11vb7m97xecvc.cloudfront.net/script.js" integrity="sha384-FeSgFWhRpNmUWqmtRLZpDSRTuxgovbVqlyM0OaJpq2IanhF2u3xjYziXsyXR9Kg/" crossorigin="anonymous" data-website-id="046780c9-3684-4ded-a9d2-bdf361faf561" data-host-url="https://d11vb7m97xecvc.cloudfront.net" data-domains="www.digital-prevention-services.nhs.uk"></script>'
+      // GitHub Pages cannot set response headers, so enforce the basic CSP in the document head.
+      // Keep the analytics host in both script-src and connect-src: Umami loads its script and sends events there.
+      `<head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self';
+  script-src 'self' ${analyticsHost} '${cspInlineScriptHash}';
+  connect-src 'self' ${analyticsHost};
+  style-src 'self';
+  img-src 'self' data:;
+  font-src 'self' https://assets.nhs.uk;
+  object-src 'none';
+  base-uri 'self';
+  form-action 'self';
+  frame-src 'none';">
+` +
+        // Load Umami asynchronously for analytics, with SRI ensuring only the expected external script runs.
+        // The host and website ID are configured in the variables above.
+        `<script defer src="${analyticsHost}/script.js"
+  integrity="${analyticsScriptSriHash}"
+  crossorigin="anonymous"
+  data-website-id="${analyticsWebsiteId}"
+  data-host-url="${analyticsHost}"
+  data-domains="www.digital-prevention-services.nhs.uk"></script>`
     )
   })
 
