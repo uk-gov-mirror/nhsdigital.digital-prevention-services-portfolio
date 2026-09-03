@@ -6,14 +6,6 @@ const serviceName = 'Digital prevention services (DPSP)'
 // The CloudFront origin hosting the Umami script and receiving analytics events.
 const analyticsHost = 'https://d11vb7m97xecvc.cloudfront.net'
 
-// Hash of the Umami script.js file hosted at analyticsHost, used by
-// Subresource Integrity (SRI) to check it has not changed unexpectedly.
-// If that script changes, download it and run:
-// openssl dgst -sha384 -binary script.js | openssl base64 -A
-// Prefix the result with 'sha384-' and update this value.
-const analyticsScriptSriHash =
-  'sha384-FeSgFWhRpNmUWqmtRLZpDSRTuxgovbVqlyM0OaJpq2IanhF2u3xjYziXsyXR9Kg/'
-
 // The Umami website ID, available in the website's Umami settings.
 const analyticsWebsiteId = '046780c9-3684-4ded-a9d2-bdf361faf561'
 
@@ -109,11 +101,9 @@ export default function (eleventyConfig) {
   form-action 'self';
   frame-src 'none';">
 ` +
-        // Load Umami asynchronously for analytics, with SRI ensuring only the expected external script runs.
+          // Load Umami asynchronously for analytics.
         // The host and website ID are configured in the variables above.
         `<script defer src="${analyticsHost}/script.js"
-  integrity="${analyticsScriptSriHash}"
-  crossorigin="anonymous"
   data-website-id="${analyticsWebsiteId}"
   data-host-url="${analyticsHost}"
   data-domains="www.digital-prevention-services.nhs.uk"></script>`
