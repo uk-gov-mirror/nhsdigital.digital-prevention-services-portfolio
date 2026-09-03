@@ -101,7 +101,7 @@ export default function (eleventyConfig) {
   form-action 'self';
   frame-src 'none';">
 ` +
-          // Load Umami asynchronously for analytics.
+        // Load Umami asynchronously for analytics.
         // The host and website ID are configured in the variables above.
         `<script defer src="${analyticsHost}/script.js"
   data-website-id="${analyticsWebsiteId}"
